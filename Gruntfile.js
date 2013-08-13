@@ -58,7 +58,7 @@ module.exports = function(grunt) {
                 options: {
                     source: '<%= topcoat.compile.options.releasePath %>/',
                     destination: './',
-                    template: 'https://github.com/topcoat/usage-guide-theme',
+                    template: '<%= pkg.topdoc.template %>',
                     templateData: '<%= pkg.topdoc.templateData %>'
                 }
             }
@@ -93,6 +93,21 @@ module.exports = function(grunt) {
             }
         },
 
+        htmlmin: {
+            telemetry: {
+                options: {
+                    removeComments: true,
+                    collapseWhitespace: true
+                },
+                files:[{
+                    expand: true,
+                    src: ['dev/test/**/topcoat/*.html'],
+                    dest: '',
+                    ext: '.test.html',
+                }],
+            },
+        },
+
         clean: {
             src: ['<%= topcoat.options.src %>/'],
             release: ['<%= topcoat.compile.options.releasePath %>/'],
@@ -112,25 +127,18 @@ module.exports = function(grunt) {
                     src: '<%= topcoat.options.themePath %>/**/img/*',
                     dest: 'img'
                 }]
+            },
+            telemetry: {
+                files: [{
+                    expand: true,
+                    cwd: 'dev/test/perf/telemetry/perf/',
+                    src: ['**'],
+                    dest: path.join(chromiumSrc, 'tools/perf/')
+                }, {
+                    src: ['<%= topcoat.compile.options.releasePath %>/**'],
+                    dest: path.join(chromiumSrc, 'tools/perf/page_sets/topcoat/release/')
+                }]
             }
-        },
-
-        /* telemetry task, added here because grunt.js file in subfolder can't load Npm tasks */
-        telemetry: {
-            files: [{
-                expand: true,
-                cwd: 'dev/test/perf/telemetry/perf/',
-                src: ['**'],
-                dest: path.join(chromiumSrc, 'tools/perf/')
-            }, {
-                src: ['<%= topcoat.compile.options.releasePath %>/**'],
-                dest: path.join(chromiumSrc, 'tools/perf/page_sets/topcoat/')
-            }, {
-                expand: true,
-                flatten: true,
-                src: ['<%= topcoat.compile.options.controlsPath %>/**/release/**/*.css'],
-                dest: path.join(chromiumSrc, 'tools/perf/page_sets/topcoat/releaseBase/')
-            }]
         },
 
         jshint: {
@@ -176,17 +184,18 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-topdoc');
     grunt.loadNpmTasks('grunt-zip');
     grunt.loadNpmTasks('grunt-contrib-cssmin');
+    grunt.loadNpmTasks('grunt-contrib-htmlmin');
 
     //Load local tasks
     grunt.loadTasks('dev/tasks');
 
     // Default task.
-    grunt.registerTask('default', ['clean', 'topcoat', 'cssmin', 'topdoc', 'copy']);
+    grunt.registerTask('default', ['clean', 'topcoat', 'cssmin', 'topdoc', 'copy:release']);
     grunt.registerTask('release', ['default', 'clean:src']);
-    grunt.registerTask('compile', ['topcoat:compile', 'topdoc', 'copy']);
+    grunt.registerTask('compile', ['topcoat:compile', 'topdoc', 'copy:release']);
 
     grunt.registerTask('telemetry', '', function(platform, theme) {
         if (chromiumSrc === "") grunt.fail.warn("Set CHROMIUM_SRC to point to the correct location\n");
-        grunt.task.run('check_chromium_src', 'perf:'.concat(platform || 'mobile').concat(':').concat(theme || 'light'), 'copy:telemetry');
+        grunt.task.run('check_chromium_src', 'perf:'.concat(platform || 'mobile').concat(':').concat(theme || 'light'), 'htmlmin:telemetry', 'copy:telemetry');
     });
 };
